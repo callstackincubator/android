@@ -32,6 +32,7 @@ jobs:
         uses: callstackincubator/android@v1
         with:
           variant: 'debug' # or else
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           # For release builds, add these:
           # sign: true
           # keystore-base64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -45,7 +46,7 @@ jobs:
 
 | Input                     | Description                             | Required | Default               |
 | ------------------------- | --------------------------------------- | -------- | --------------------- |
-| `github-token`            | GitHub Token                            | No       | `${{ github.token }}` |
+| `github-token`            | GitHub Token                            | Yes      | -                     |
 | `working-directory`       | Working directory for the build command | No       | `.`                   |
 | `validate-gradle-wrapper` | Whether to validate the Gradle wrapper  | No       | `true`                |
 | `variant`                 | Build variant (debug/release)           | No       | `debug`               |

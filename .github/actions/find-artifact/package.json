@@ -1,0 +1,10 @@
+{
+  "name": "find-artifact",
+  "version": "1.0.0",
+  "description": "Find existing artifact for RNEF builds",
+  "main": "index.mjs",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0"
+  }
+}
