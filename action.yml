@@ -89,7 +89,7 @@ runs:
 
     - name: Native Fingerprint
       id: fingerprint
-      uses: ./.github/actions/rnef-native-fingerprint
+      uses: callstackincubator/ios/.github/actions/rnef-native-fingerprint@fix/release
       with:
         platform: android
         working-directory: ${{ inputs.working-directory }}
@@ -101,7 +101,7 @@ runs:
 
     - name: Find artifact URL
       id: find-artifact
-      uses: ./.github/actions/find-artifact
+      uses: callstackincubator/ios/.github/actions/find-artifact@fix/release
       with:
         name: ${{ env.ARTIFACT_NAME }}
         re-sign: ${{ inputs.re-sign }}
@@ -215,7 +215,7 @@ runs:
 
     - name: Post Build
       if: ${{ github.event_name == 'pull_request' && inputs.comment-bot == 'true' }}
-      uses: ./.github/actions/rnef-post-build
+      uses: callstackincubator/ios/.github/actions/rnef-post-build@fix/release
       with:
         title: Android ${{ inputs.variant }} APK for all devices
         artifact-url: ${{ steps.upload-artifact.outputs.artifact-url || steps.find-artifact.outputs.artifact-url }}
