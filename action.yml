@@ -20,6 +20,9 @@ inputs:
   rnef-build-extra-params:
     description: 'Extra parameters to pass to "rnef build:android"'
     required: false
+  architectures:
+    description: 'A comma-separated list of device architectures to build for (e.g. "arm64-v8a,armeabi-v7a")'
+    required: false
   sign:
     description: 'Whether to sign the build with release keystore'
     required: false
@@ -89,7 +92,7 @@ runs:
 
     - name: Native Fingerprint
       id: fingerprint
-      uses: callstackincubator/android/.github/actions/rnef-native-fingerprint@v1
+      uses: callstackincubator/android/.github/actions/rnef-native-fingerprint@feat/architectures
       with:
         platform: android
         working-directory: ${{ inputs.working-directory }}
@@ -101,7 +104,7 @@ runs:
 
     - name: Find artifact URL
       id: find-artifact
-      uses: callstackincubator/android/.github/actions/find-artifact@v1
+      uses: callstackincubator/android/.github/actions/find-artifact@feat/architectures
       with:
         name: ${{ env.ARTIFACT_NAME }}
         re-sign: ${{ inputs.re-sign }}
@@ -154,6 +157,7 @@ runs:
       run: |
         npx rnef build:android \
           --variant "${{ inputs.variant }}" \
+          ${{ inputs.architectures ? '--extra-params -PreactNativeArchitectures=' + inputs.architectures : '' }} \
           ${{ inputs.rnef-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -193,7 +197,7 @@ runs:
     # Find artifact URL again before uploading, as other concurrent workflows could upload the same artifact
     - name: Find artifact URL again before uploading
       id: find-artifact-after-build
-      uses: callstackincubator/android/.github/actions/find-artifact@v1
+      uses: callstackincubator/android/.github/actions/find-artifact@feat/architectures
       with:
         name: ${{ env.ARTIFACT_NAME }}
         re-sign: ${{ inputs.re-sign }}
@@ -228,7 +232,7 @@ runs:
 
     - name: Post Build
       if: ${{ github.event_name == 'pull_request' && inputs.comment-bot == 'true' }}
-      uses: callstackincubator/android/.github/actions/rnef-post-build@v1
+      uses: callstackincubator/android/.github/actions/rnef-post-build@feat/architectures
       with:
         title: Android ${{ inputs.variant }} APK for all devices
         artifact-url: ${{ steps.upload-artifact.outputs.artifact-url || steps.find-artifact-after-build.outputs.artifact-url }}
