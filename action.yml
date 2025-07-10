@@ -20,9 +20,6 @@ inputs:
   rnef-build-extra-params:
     description: 'Extra parameters to pass to "rnef build:android"'
     required: false
-  architectures:
-    description: 'A comma-separated list of device architectures to build for (e.g. "arm64-v8a,armeabi-v7a")'
-    required: false
   sign:
     description: 'Whether to sign the build with release keystore'
     required: false
@@ -196,7 +193,6 @@ runs:
       run: |
         npx rnef build:android \
           --variant "${{ inputs.variant }}" \
-          ${{ inputs.architectures ? '--extra-params -PreactNativeArchitectures=' + inputs.architectures : '' }} \
           ${{ inputs.rnef-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
