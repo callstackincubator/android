@@ -20,6 +20,9 @@ inputs:
   rnef-build-extra-params:
     description: 'Extra parameters to pass to "rnef build:android"'
     required: false
+  architectures:
+    description: 'A comma-separated list of device architectures to build for (e.g. "arm64-v8a,armeabi-v7a")'
+    required: false
   sign:
     description: 'Whether to sign the build with release keystore'
     required: false
@@ -49,10 +52,10 @@ inputs:
 outputs:
   artifact-url:
     description: 'URL of the relevant Android build artifact (could be cached)'
-    value: ${{ steps.upload-artifact.outputs.artifact-url || (steps.find-artifact.outcome == 'success' && steps.find-artifact.outputs.artifact-url) }}
+    value: ${{ steps.upload-artifact.outputs.artifact-url || env.ARTIFACT_URL }}
   artifact-id:
     description: 'ID of the relevant Android build artifact (could be cached)'
-    value: ${{ steps.upload-artifact.outputs.artifact-id || (steps.find-artifact.outcome == 'success' && steps.find-artifact.outputs.artifact-id) }}
+    value: ${{ steps.upload-artifact.outputs.artifact-id || env.ARTIFACT_ID }}
 
 runs:
   using: 'composite'
@@ -89,27 +92,66 @@ runs:
 
     - name: Native Fingerprint
       id: fingerprint
-      uses: callstackincubator/android/.github/actions/rnef-native-fingerprint@v1
-      with:
-        platform: android
-        working-directory: ${{ inputs.working-directory }}
-
-    - name: Set Artifact Name
       run: |
-        echo "ARTIFACT_NAME=rnef-android-${{ inputs.variant }}-${{ steps.fingerprint.outputs.hash}}" >> $GITHUB_ENV
+        FINGERPRINT_OUTPUT=$(npx rnef fingerprint -p android --raw)
+        echo "FINGERPRINT=$FINGERPRINT_OUTPUT" >> $GITHUB_ENV
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Get Provider Name
+      run: |
+        PROVIDER_NAME=$(npx rnef remote-cache get-provider-name)
+        echo "PROVIDER_NAME=$PROVIDER_NAME" >> $GITHUB_ENV
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Populate GitHub Token in Cache
+      if: ${{ env.PROVIDER_NAME == 'GitHub' }}
+      run: |
+        mkdir -p .rnef/cache
+        echo "{\"githubToken\": \"${{ inputs.github-token }}\"}" > .rnef/cache/project.json
+      shell: bash
+    
+    # We create PR-related artifacts to avoid overwriting the main artifact with new JS bundle
+    - name: Check if PR-related artifact exists
+      if: ${{ github.event_name == 'pull_request' && inputs.re-sign == 'true' }}
+      run: |
+        ARTIFACT_TRAITS="${{ inputs.variant }},${{ github.event.pull_request.number}}"
+        echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
+
+        OUTPUT=$(npx rnef remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json)
+        if [ "$OUTPUT" ]; then
+          echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+          echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$(echo "$OUTPUT" | jq -r '.name')" >> $GITHUB_ENV
+        fi
+      shell: bash
+    
+    - name: Check if regular artifact exists
+      if: ${{ !env.ARTIFACT_NAME }}
+      run: |
+        ARTIFACT_TRAITS="${{ inputs.variant }}"
+        echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
+
+        OUTPUT=$(npx rnef remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json)
+        if [ "$OUTPUT" ]; then
+          echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+          echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$(echo "$OUTPUT" | jq -r '.name')" >> $GITHUB_ENV
+        fi
+      shell: bash
+    
+    - name: Set Artifact Name (if not set)
+      if: ${{ !env.ARTIFACT_NAME }}
+      run: |
+        # Transform commas to hyphens
+        ARTIFACT_TRAITS_HYPHENATED=$(echo "$ARTIFACT_TRAITS" | tr ',' '-')
+        ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT="${ARTIFACT_TRAITS_HYPHENATED}-${FINGERPRINT}"
+        echo "ARTIFACT_NAME=rnef-android-${ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT}" >> $GITHUB_ENV
       shell: bash
 
-    - name: Find artifact URL
-      id: find-artifact
-      uses: callstackincubator/android/.github/actions/find-artifact@v1
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        re-sign: ${{ inputs.re-sign }}
-        github-token: ${{ inputs.github-token }}
-        pr-number: ${{ github.event.pull_request.number }}
-
     - name: Install Java
-      if: ${{ !steps.find-artifact.outputs.artifact-url }}
+      if: ${{ !env.ARTIFACT_URL }}
       uses: actions/setup-java@v4
       with:
         java-version: 17
@@ -117,11 +159,11 @@ runs:
         cache: gradle
 
     - name: Validate Gradle wrapper
-      if: ${{ inputs.validate-gradle-wrapper == 'true' && !steps.find-artifact.outputs.artifact-url }}
+      if: ${{ inputs.validate-gradle-wrapper == 'true' && !env.ARTIFACT_URL }}
       uses: gradle/actions/wrapper-validation@v4
 
     - name: Create local gradle.properties
-      if: ${{ !steps.find-artifact.outputs.artifact-url && inputs.sign }}
+      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
         mkdir -p $HOME/.gradle
         touch $HOME/.gradle/gradle.properties
@@ -132,7 +174,7 @@ runs:
       shell: bash
 
     - name: Determine Android sourceDir and appName
-      if: ${{ !steps.find-artifact.outputs.artifact-url }}
+      if: ${{ !env.ARTIFACT_URL }}
       run: |
         JSON_OUTPUT=$(npx rnef config -p android)
         echo "$JSON_OUTPUT" | jq -r '.project'
@@ -144,46 +186,39 @@ runs:
       working-directory: ${{ inputs.working-directory }}
 
     - name: Decode and store keystore file
-      if: ${{ !steps.find-artifact.outputs.artifact-url && inputs.sign }}
+      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
         echo "${{ inputs.keystore-base64 }}" | base64 --decode > $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
       shell: bash
 
     - name: Build Android
-      if: ${{ !steps.find-artifact.outputs.artifact-url }}
+      if: ${{ !env.ARTIFACT_URL }}
       run: |
         npx rnef build:android \
           --variant "${{ inputs.variant }}" \
+          ${{ inputs.architectures ? '--extra-params -PreactNativeArchitectures=' + inputs.architectures : '' }} \
           ${{ inputs.rnef-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
     - name: Find Build Artifact
-      if: ${{ !steps.find-artifact.outputs.artifact-url }}
+      if: ${{ !env.ARTIFACT_URL }}
       run: |
         APK_PATH=$(find $ANDROID_SOURCE_DIR/$APP_NAME/build/outputs -name '*.apk' | head -1 )
         echo APK_PATH $APK_PATH
         echo "ARTIFACT_PATH=$APK_PATH" >> $GITHUB_ENV
       shell: bash
-
+    
     - name: Download and Unpack APK
-      if: ${{ steps.find-artifact.outputs.artifact-url && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
       run: |
-        curl -L -H "Authorization: token ${{ inputs.github-token }}" \
-          -o artifact.zip \
-          "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ steps.find-artifact.outputs.artifact-id }}/zip"
-        unzip artifact.zip -d downloaded-artifacts
-        ls -l downloaded-artifacts
-        APK_PATH=$(find downloaded-artifacts -name "*.apk" -print -quit)
-        if [ -z "$APK_PATH" ]; then
-          echo "No APK file found in the extracted contents."
-          exit 1
-        fi
+        DOWNLOAD_OUTPUT=$(npx rnef remote-cache download --name ${{ env.ARTIFACT_NAME }} --json)
+        APK_PATH=$(echo "$DOWNLOAD_OUTPUT" | jq -r '.path')
         echo "ARTIFACT_PATH=$APK_PATH" >> $GITHUB_ENV
       shell: bash
 
     - name: Re-sign APK
-      if: ${{ steps.find-artifact.outputs.artifact-url && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
       run: |
         npx rnef sign:android ${{ env.ARTIFACT_PATH }} \
           --build-jsbundle
@@ -192,35 +227,48 @@ runs:
 
     # Find artifact URL again before uploading, as other concurrent workflows could upload the same artifact
     - name: Find artifact URL again before uploading
-      id: find-artifact-after-build
-      uses: callstackincubator/android/.github/actions/find-artifact@v1
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        re-sign: ${{ inputs.re-sign }}
-        github-token: ${{ inputs.github-token }}
-        pr-number: ${{ github.event.pull_request.number }}
-
-    - name: Upload Artifact
+      run: |
+        OUTPUT=$(npx rnef remote-cache list --name ${{ env.ARTIFACT_NAME }} --json)
+        if [ -z "$OUTPUT" ]; then
+          echo "No artifact found"
+        else
+          echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+          echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
+        fi
+      shell: bash
+    
+    # Special case for GitHub, as it doesn't support uploading through the API
+    - name: Upload Artifact to GitHub
       id: upload-artifact
-      if: ${{ !steps.find-artifact-after-build.outputs.artifact-url || (inputs.re-sign == 'true' && github.event_name == 'pull_request') }}
+      if: ${{ env.PROVIDER_NAME == 'GitHub' && (!env.ARTIFACT_URL || (inputs.re-sign == 'true' && github.event_name == 'pull_request')) }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.find-artifact-after-build.outputs.artifact-name || env.ARTIFACT_NAME }}
+        name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_PATH }}
         if-no-files-found: error
 
-    - name: Delete Old Re-Signed Artifacts
-      if: ${{ steps.find-artifact-after-build.outputs.artifact-url && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
+    - name: Upload Artifact to Remote Cache for re-signed builds
+      if: ${{ env.PROVIDER_NAME != 'GitHub' && (inputs.re-sign == 'true' && github.event_name == 'pull_request') }}
       run: |
-        for ID in ${{ steps.find-artifact-after-build.outputs.artifact-ids }}; do
-          echo "Deleting artifact with ID: $ID"
-          curl -X DELETE -H "Authorization: token ${{ inputs.github-token }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ID"
-        done
+        OUTPUT=$(npx rnef remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path ${{ env.ARTIFACT_PATH }} --json --verbose)
+        echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Upload Artifact to Remote Cache for regular builds
+      if: ${{ env.PROVIDER_NAME != 'GitHub' && !env.ARTIFACT_URL }}
+      run: |
+        OUTPUT=$(npx rnef remote-cache upload --name ${{ env.ARTIFACT_NAME }} --json --verbose)
+        echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Delete Old Re-Signed Artifacts
+      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
+      run: |
+        npx rnef remote-cache delete --name ${{ env.ARTIFACT_NAME }} --all-but-latest --json
       shell: bash
 
     - name: Clean Up Keystore and gradle properties (signed builds only)
-      if: ${{ !steps.find-artifact-after-build.outputs.artifact-url && inputs.sign }}
+      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
         rm $HOME/.gradle/gradle.properties
         rm $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
@@ -228,8 +276,8 @@ runs:
 
     - name: Post Build
       if: ${{ github.event_name == 'pull_request' && inputs.comment-bot == 'true' }}
-      uses: callstackincubator/android/.github/actions/rnef-post-build@v1
+      uses: callstackincubator/android/.github/actions/rnef-post-build@feat/remote-cache-command
       with:
         title: Android ${{ inputs.variant }} APK for all devices
-        artifact-url: ${{ steps.upload-artifact.outputs.artifact-url || steps.find-artifact-after-build.outputs.artifact-url }}
+        artifact-url: ${{ steps.upload-artifact.outputs.artifact-url || env.ARTIFACT_URL }}
         github-token: ${{ inputs.github-token }}
