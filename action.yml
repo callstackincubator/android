@@ -116,6 +116,10 @@ runs:
         distribution: adopt
         cache: gradle
 
+    - name: Install Android SDK Tools
+      if: ${{ !steps.find-artifact.outputs.artifact-url }}
+      uses: android-actions/setup-android@v3
+
     - name: Validate Gradle wrapper
       if: ${{ inputs.validate-gradle-wrapper == 'true' && !steps.find-artifact.outputs.artifact-url }}
       uses: gradle/actions/wrapper-validation@v4
