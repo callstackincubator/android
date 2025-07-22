@@ -13,6 +13,10 @@ inputs:
     description: 'Whether to validate the Gradle wrapper'
     required: false
     default: true
+  setup-java:
+    description: 'Whether to run actions/setup-java action'
+    required: false
+    default: true
   variant:
     description: 'Build variant'
     required: false
@@ -148,7 +152,7 @@ runs:
       shell: bash
 
     - name: Install Java
-      if: ${{ !env.ARTIFACT_URL }}
+      if: ${{ inputs.setup-java == 'true' && !env.ARTIFACT_URL }}
       uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
       with:
         java-version: 17
