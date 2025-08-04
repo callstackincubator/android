@@ -120,7 +120,7 @@ runs:
         ARTIFACT_TRAITS="${{ inputs.variant }},${{ github.event.pull_request.number}}"
         echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
 
-        OUTPUT=$(npx rnef remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json 2>&1) || (echo "$OUTPUT" && exit 1)
+        OUTPUT=$(npx rnef remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json 2>&1) || (echo "$OUTPUT") && OUTPUT=""
         if [ "$OUTPUT" ]; then
           echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
           echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
@@ -134,7 +134,7 @@ runs:
         ARTIFACT_TRAITS="${{ inputs.variant }}"
         echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
 
-        OUTPUT=$(npx rnef remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json 2>&1) || (echo "$OUTPUT" && exit 1)
+        OUTPUT=$(npx rnef remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json 2>&1) || (echo "$OUTPUT") && OUTPUT=""
         if [ "$OUTPUT" ]; then
           echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
           echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
@@ -228,7 +228,7 @@ runs:
     # Find artifact URL again before uploading, as other concurrent workflows could upload the same artifact
     - name: Find artifact URL again before uploading
       run: |
-        OUTPUT=$(npx rnef remote-cache list --name ${{ env.ARTIFACT_NAME }} --json 2>&1) || (echo "$OUTPUT" && exit 1)
+        OUTPUT=$(npx rnef remote-cache list --name ${{ env.ARTIFACT_NAME }} --json 2>&1) || (echo "$OUTPUT") && OUTPUT=""
         if [ -z "$OUTPUT" ]; then
           echo "No artifact found"
         else
