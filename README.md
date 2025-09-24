@@ -35,6 +35,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # For release builds, add these:
           # sign: true
+          # Option 1: Use keystore file directly
+          # keystore-file: 'path/to/your-keystore.jks'
+          # Option 2: Use base64 encoded keystore (alternative to keystore-file)
           # keystore-base64: ${{ secrets.KEYSTORE_BASE64 }}
           # keystore-store-file: 'your-keystore.jks'
           # keystore-store-password: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
@@ -53,6 +56,7 @@ jobs:
 | `variant`                 | Build variant (debug/release)            | No       | `debug` |
 | `sign`                    | Whether to sign the build with keystore  | No       | -       |
 | `re-sign`                 | Re-sign the APK with new JS bundle       | No       | `false` |
+| `keystore-file`           | Path to the keystore file                | No       | -       |
 | `keystore-base64`         | Base64 encoded keystore file             | No       | -       |
 | `keystore-store-file`     | Keystore store file name                 | No       | -       |
 | `keystore-store-password` | Keystore store password                  | No       | -       |
