@@ -37,6 +37,9 @@ inputs:
   keystore-base64:
     description: 'Base64 version of the release keystore'
     required: false
+  keystore-file:
+    description: 'Path to the keystore file'
+    required: false
   keystore-store-file:
     description: 'Keystore store file name'
     required: false
@@ -68,8 +71,8 @@ runs:
     - name: Validate Inputs
       run: |
         if [ "${{ inputs.sign }}" == "true" ]; then
-          if [ -z "${{ inputs.keystore-base64 }}" ]; then
-            echo "Input 'keystore-base64' is required for signed builds."
+          if [ -z "${{ inputs.keystore-file }}" ] && [ -z "${{ inputs.keystore-base64 }}" ]; then
+            echo "Either 'keystore-file' or 'keystore-base64' is required for signed builds."
             exit 1
           fi
 
@@ -116,7 +119,6 @@ runs:
         mkdir -p .rock/cache
         echo "{\"githubToken\": \"${{ inputs.github-token }}\"}" > .rock/cache/project.json
       shell: bash
-    
     # We create PR-related artifacts to avoid overwriting the main artifact with new JS bundle
     - name: Check if PR-related artifact exists
       if: ${{ github.event_name == 'pull_request' && inputs.re-sign == 'true' }}
@@ -131,7 +133,7 @@ runs:
           echo "ARTIFACT_NAME=$(echo "$OUTPUT" | jq -r '.name')" >> $GITHUB_ENV
         fi
       shell: bash
-    
+
     - name: Check if regular artifact exists
       if: ${{ !env.ARTIFACT_NAME }}
       run: |
@@ -145,7 +147,6 @@ runs:
           echo "ARTIFACT_NAME=$(echo "$OUTPUT" | jq -r '.name')" >> $GITHUB_ENV
         fi
       shell: bash
-    
     - name: Set Artifact Name (if not set)
       if: ${{ !env.ARTIFACT_NAME }}
       run: |
@@ -193,7 +194,11 @@ runs:
     - name: Decode and store keystore file
       if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
-        echo "${{ inputs.keystore-base64 }}" | base64 --decode > $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
+        if [ -n "${{ inputs.keystore-file }}" ]; then
+          cp "${{ inputs.keystore-file }}" $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
+        else
+          echo "${{ inputs.keystore-base64 }}" | base64 --decode > $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
+        fi
       shell: bash
 
     - name: Build Android
@@ -212,7 +217,7 @@ runs:
         echo APK_PATH $APK_PATH
         echo "ARTIFACT_PATH=$APK_PATH" >> $GITHUB_ENV
       shell: bash
-    
+
     - name: Download and Unpack APK
       if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
       run: |
@@ -240,7 +245,6 @@ runs:
           echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
         fi
       shell: bash
-    
     # Special case for GitHub, as it doesn't support uploading through the API
     - name: Upload Artifact to GitHub
       id: upload-artifact
