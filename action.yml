@@ -206,6 +206,7 @@ runs:
           echo "${{ inputs.keystore-base64 }}" | base64 --decode > $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
         fi
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Build Android
       if: ${{ !env.ARTIFACT_URL }}
@@ -289,6 +290,7 @@ runs:
         rm $HOME/.gradle/gradle.properties
         rm $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Post Build
       if: ${{ github.event_name == 'pull_request' && inputs.comment-bot == 'true' }}
