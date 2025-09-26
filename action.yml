@@ -226,7 +226,7 @@ runs:
       shell: bash
 
     - name: Download and Unpack APK
-      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
       run: |
         DOWNLOAD_OUTPUT=$(npx rock remote-cache download --name ${{ env.ARTIFACT_NAME }} --json) || (echo "$DOWNLOAD_OUTPUT" && exit 1)
         APK_PATH=$(echo "$DOWNLOAD_OUTPUT" | jq -r '.path')
@@ -234,12 +234,27 @@ runs:
       shell: bash
 
     - name: Re-sign APK
-      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
       run: |
         npx rock sign:android ${{ env.ARTIFACT_PATH }} \
           --build-jsbundle
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+
+    - name: Update Artifact Name for re-signed builds
+      if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          IDENTIFIER="${{ github.event.pull_request.number }}"
+        else
+          IDENTIFIER=$(echo "$GITHUB_SHA" | cut -c1-7)
+        fi
+        ARTIFACT_TRAITS="${{ inputs.variant }},${IDENTIFIER}"
+        ARTIFACT_TRAITS_HYPHENATED=$(echo "$ARTIFACT_TRAITS" | tr ',' '-')
+        ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT="${ARTIFACT_TRAITS_HYPHENATED}-${FINGERPRINT}"
+        echo "ARTIFACT_NAME=rock-android-${ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT}" >> $GITHUB_ENV
+        echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
+      shell: bash
 
     # Find artifact URL again before uploading, as other concurrent workflows could upload the same artifact
     - name: Find artifact URL again before uploading
@@ -255,7 +270,7 @@ runs:
     # Special case for GitHub, as it doesn't support uploading through the API
     - name: Upload Artifact to GitHub
       id: upload-artifact
-      if: ${{ env.PROVIDER_NAME == 'GitHub' && (!env.ARTIFACT_URL || (inputs.re-sign == 'true' && github.event_name == 'pull_request')) }}
+      if: ${{ env.PROVIDER_NAME == 'GitHub' && (!env.ARTIFACT_URL || inputs.re-sign == 'true') }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: ${{ env.ARTIFACT_NAME }}
@@ -265,14 +280,14 @@ runs:
     # For re-signed builds, the ARTIFACT_NAME may contain PR-number, while Rock will save the artifact without PR trait in its cache.
     # We need to upload the artifact with the PR-number in the name, that's why we use --binary-path with appropriate ARTIFACT_PATH that accounts for it.
     - name: Upload Artifact to Remote Cache for re-signed builds
-      if: ${{ env.PROVIDER_NAME != 'GitHub' && (inputs.re-sign == 'true' && github.event_name == 'pull_request') }}
+      if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign == 'true' }}
       run: |
         OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path ${{ env.ARTIFACT_PATH }} --json --verbose) || (echo "$OUTPUT" && exit 1)
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
       shell: bash
 
     - name: Upload Artifact to Remote Cache for regular builds
-      if: ${{ env.PROVIDER_NAME != 'GitHub' && !env.ARTIFACT_URL }}
+      if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign != 'true' && !env.ARTIFACT_URL }}
       run: |
         OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --json --verbose) || (echo "$OUTPUT" && exit 1)
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
