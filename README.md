@@ -63,7 +63,7 @@ jobs:
 | `keystore-store-password` | Keystore store password                  | No       | -                  |
 | `keystore-key-alias`      | Keystore key alias                       | No       | -                  |
 | `keystore-key-password`   | Keystore key password                    | No       | -                  |
-| `keystore-path`           | Path for keystore                        | No       | `release.keystore` |
+| `keystore-path`           | where the keystore should be placed      | No       | `release.keystore` |
 | `rock-build-extra-params` | Extra parameters for rock build:android  | No       | -                  |
 | `comment-bot`             | Whether to comment PR with build link    | No       | `true`             |
 
