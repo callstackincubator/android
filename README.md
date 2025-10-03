@@ -43,7 +43,7 @@ jobs:
           # keystore-store-password: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           # keystore-key-alias: 'your-key-alias'
           # keystore-key-password: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
-          # keystore-path: 'tools/buildtools/upload-key.keystore' # Optional: custom keystore path
+          # keystore-path: 'tools/buildtools/upload-key.keystore' # Optional: for custom keystore locations
 ```
 
 ## Inputs
