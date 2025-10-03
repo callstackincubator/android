@@ -43,27 +43,29 @@ jobs:
           # keystore-store-password: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           # keystore-key-alias: 'your-key-alias'
           # keystore-key-password: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          # keystore-path: 'tools/buildtools/upload-key.keystore' # Optional: custom keystore path
 ```
 
 ## Inputs
 
-| Input                     | Description                              | Required | Default |
-| ------------------------- | ---------------------------------------- | -------- | ------- |
-| `github-token`            | GitHub Token                             | Yes      | -       |
-| `working-directory`       | Working directory for the build command  | No       | `.`     |
-| `validate-gradle-wrapper` | Whether to validate the Gradle wrapper   | No       | `true`  |
-| `setup-java`              | Whether to run actions/setup-java action | No       | `true`  |
-| `variant`                 | Build variant (debug/release)            | No       | `debug` |
-| `sign`                    | Whether to sign the build with keystore  | No       | -       |
-| `re-sign`                 | Re-sign the APK with new JS bundle       | No       | `false` |
-| `keystore-file`           | Path to the keystore file                | No       | -       |
-| `keystore-base64`         | Base64 encoded keystore file             | No       | -       |
-| `keystore-store-file`     | Keystore store file name                 | No       | -       |
-| `keystore-store-password` | Keystore store password                  | No       | -       |
-| `keystore-key-alias`      | Keystore key alias                       | No       | -       |
-| `keystore-key-password`   | Keystore key password                    | No       | -       |
-| `rock-build-extra-params` | Extra parameters for rock build:android  | No       | -       |
-| `comment-bot`             | Whether to comment PR with build link    | No       | `true`  |
+| Input                     | Description                              | Required | Default            |
+| ------------------------- | ---------------------------------------- | -------- | ------------------ |
+| `github-token`            | GitHub Token                             | Yes      | -                  |
+| `working-directory`       | Working directory for the build command  | No       | `.`                |
+| `validate-gradle-wrapper` | Whether to validate the Gradle wrapper   | No       | `true`             |
+| `setup-java`              | Whether to run actions/setup-java action | No       | `true`             |
+| `variant`                 | Build variant (debug/release)            | No       | `debug`            |
+| `sign`                    | Whether to sign the build with keystore  | No       | -                  |
+| `re-sign`                 | Re-sign the APK with new JS bundle       | No       | `false`            |
+| `keystore-file`           | Path to the keystore file                | No       | -                  |
+| `keystore-base64`         | Base64 encoded keystore file             | No       | -                  |
+| `keystore-store-file`     | Keystore store file name                 | No       | -                  |
+| `keystore-store-password` | Keystore store password                  | No       | -                  |
+| `keystore-key-alias`      | Keystore key alias                       | No       | -                  |
+| `keystore-key-password`   | Keystore key password                    | No       | -                  |
+| `keystore-path`           | Path for keystore                        | No       | `release.keystore` |
+| `rock-build-extra-params` | Extra parameters for rock build:android  | No       | -                  |
+| `comment-bot`             | Whether to comment PR with build link    | No       | `true`             |
 
 ## Outputs
 
