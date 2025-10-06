@@ -52,6 +52,10 @@ inputs:
   keystore-key-password:
     description: 'Keystore key password'
     required: false
+  keystore-path:
+    description: 'Path within the Android source directory where the keystore should be placed'
+    required: false
+    default: 'release.keystore'
   comment-bot:
     description: 'Whether to send a comment under PR with the link to the generated build'
     required: false
@@ -200,10 +204,15 @@ runs:
     - name: Decode and store keystore file
       if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
+        KEYSTORE_TARGET_PATH="$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
+        mkdir -p "$(dirname "$KEYSTORE_TARGET_PATH")" || {
+          echo "Failed to create keystore directory: $(dirname "$KEYSTORE_TARGET_PATH")"
+          exit 1
+        }
         if [ -n "${{ inputs.keystore-file }}" ]; then
-          cp "${{ inputs.keystore-file }}" $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
+          cp "${{ inputs.keystore-file }}" "$KEYSTORE_TARGET_PATH"
         else
-          echo "${{ inputs.keystore-base64 }}" | base64 --decode > $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
+          echo "${{ inputs.keystore-base64 }}" | base64 --decode > "$KEYSTORE_TARGET_PATH"
         fi
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -303,7 +312,7 @@ runs:
       if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
         rm $HOME/.gradle/gradle.properties
-        rm $ANDROID_SOURCE_DIR/$APP_NAME/release.keystore
+        rm "$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
