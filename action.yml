@@ -209,7 +209,12 @@ runs:
         else
           KEYSTORE_TARGET_PATH="$ANDROID_SOURCE_DIR/${{ inputs.keystore-path }}"
         fi
-        echo "Keystore target path: $KEYSTORE_TARGET_PATH"
+
+        echo "Keystore target path before normalizing: $KEYSTORE_TARGET_PATH"
+        while [[ "$KEYSTORE_TARGET_PATH" == *"/../"* ]]; do
+          KEYSTORE_TARGET_PATH=$(echo "$KEYSTORE_TARGET_PATH" | sed 's|/[^/][^/]*/\.\./|/|')
+        done
+        echo "Keystore target path after normalizing: $KEYSTORE_TARGET_PATH"
         mkdir -p "$(dirname "$KEYSTORE_TARGET_PATH")" || {
           echo "Failed to create keystore directory: $(dirname "$KEYSTORE_TARGET_PATH")"
           exit 1
