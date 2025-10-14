@@ -74,6 +74,43 @@ jobs:
 | `artifact-url` | URL of the build artifact |
 | `artifact-id`  | ID of the build artifact  |
 
+## Code Signing
+
+When `sign: true` is enabled, this action configures Android code signing by setting Gradle properties. It supports **two property conventions** for maximum compatibility:
+
+### Standard Android Properties (Recommended)
+
+The action automatically sets `android.injected.signing.*` properties which are natively recognized by the Android Gradle Plugin. These properties work with any standard `build.gradle` configuration without modifications:
+
+```gradle
+signingConfigs {
+    release {
+        // These hardcoded values will be automatically overridden
+        storeFile file('path/to/keystore.jks')
+        keyAlias 'placeholder'
+        storePassword 'placeholder'
+        keyPassword 'placeholder'
+    }
+}
+```
+
+### Custom RNEF Properties (Legacy)
+
+For apps that explicitly read custom properties in their `build.gradle`, the action also sets `RNEF_UPLOAD_*` properties:
+
+```gradle
+signingConfigs {
+    release {
+        storeFile file('path/to/keystore.jks')
+        keyAlias project.findProperty('RNEF_UPLOAD_KEY_ALIAS') ?: 'placeholder'
+        storePassword project.findProperty('RNEF_UPLOAD_STORE_PASSWORD') ?: 'placeholder'
+        keyPassword project.findProperty('RNEF_UPLOAD_KEY_PASSWORD') ?: 'placeholder'
+    }
+}
+```
+
+Both conventions are set simultaneously, so the action works with any existing build configuration.
+
 ## Prerequisites
 
 - Ubuntu runner
