@@ -183,6 +183,14 @@ runs:
       run: |
         mkdir -p $HOME/.gradle
         touch $HOME/.gradle/gradle.properties
+
+        # Android standard properties (auto-recognized by AGP)
+        echo "android.injected.signing.store.file=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.store.password=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.alias=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+
+        # Rock custom properties (for apps that explicitly read them in signingConfigs)
         echo "RNEF_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
         echo "RNEF_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
         echo "RNEF_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
