@@ -78,7 +78,7 @@ jobs:
 
 When `sign: true` is enabled, this action configures Android code signing by setting Gradle properties. It supports **two property conventions** for maximum compatibility:
 
-### Standard Android Properties (Recommended)
+### Standard Android Properties
 
 The action automatically sets `android.injected.signing.*` properties which are natively recognized by the Android Gradle Plugin. These properties work with any standard `build.gradle` configuration without modifications:
 
@@ -94,9 +94,9 @@ signingConfigs {
 }
 ```
 
-### Custom RNEF Properties (Legacy)
+### Custom ROCK Properties
 
-For apps that explicitly read custom properties in their `build.gradle`, the action also sets `RNEF_UPLOAD_*` properties:
+For apps that explicitly read custom properties in their `build.gradle`, the action also sets `ROCK_UPLOAD_*` properties:
 
 ```gradle
 signingConfigs {

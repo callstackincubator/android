@@ -191,10 +191,10 @@ runs:
         echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
 
         # Rock custom properties (for apps that explicitly read them in signingConfigs)
-        echo "RNEF_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK__UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
       shell: bash
 
     - name: Determine Android sourceDir and appName
