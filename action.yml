@@ -183,10 +183,18 @@ runs:
       run: |
         mkdir -p $HOME/.gradle
         touch $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
-        echo "RNEF_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+
+        # Android standard properties (auto-recognized by AGP)
+        echo "android.injected.signing.store.file=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.store.password=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.alias=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+
+        # Rock custom properties (for apps that explicitly read them in signingConfigs)
+        echo "ROCK_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
       shell: bash
 
     - name: Determine Android sourceDir and appName
@@ -204,15 +212,25 @@ runs:
     - name: Decode and store keystore file
       if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
-        KEYSTORE_TARGET_PATH="$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
+        if [ -n "$APP_NAME" ]; then
+          KEYSTORE_TARGET_PATH="$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
+        else
+          KEYSTORE_TARGET_PATH="$ANDROID_SOURCE_DIR/${{ inputs.keystore-path }}"
+        fi
+
+        echo "Keystore target path before normalizing: $KEYSTORE_TARGET_PATH"
+        KEYSTORE_TARGET_PATH=$(realpath -m "$KEYSTORE_TARGET_PATH")
+        echo "Keystore target path after normalizing: $KEYSTORE_TARGET_PATH"
         mkdir -p "$(dirname "$KEYSTORE_TARGET_PATH")" || {
           echo "Failed to create keystore directory: $(dirname "$KEYSTORE_TARGET_PATH")"
           exit 1
         }
         if [ -n "${{ inputs.keystore-file }}" ]; then
           cp "${{ inputs.keystore-file }}" "$KEYSTORE_TARGET_PATH"
+          echo "Successfully copied keystore file to target path: $KEYSTORE_TARGET_PATH"
         else
           echo "${{ inputs.keystore-base64 }}" | base64 --decode > "$KEYSTORE_TARGET_PATH"
+          echo "Successfully copied keystore base64 to target path: $KEYSTORE_TARGET_PATH"
         fi
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -312,7 +330,11 @@ runs:
       if: ${{ !env.ARTIFACT_URL && inputs.sign }}
       run: |
         rm $HOME/.gradle/gradle.properties
-        rm "$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
+        if [ -n "$APP_NAME" ]; then
+          rm "$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
+        else
+          rm "$ANDROID_SOURCE_DIR/${{ inputs.keystore-path }}"
+        fi
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 

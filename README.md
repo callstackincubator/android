@@ -74,6 +74,52 @@ jobs:
 | `artifact-url` | URL of the build artifact |
 | `artifact-id`  | ID of the build artifact  |
 
+## Code Signing
+
+When `sign: true` is enabled, this action configures Android code signing by setting Gradle properties. It supports **two property conventions** for maximum compatibility:
+
+### Android injected properties
+
+(this is an undocumented feature used by Fastlane and AGP)
+
+The action automatically sets `android.injected.signing.*` properties which are natively recognized by the Android Gradle Plugin. These properties work with any standard `build.gradle` configuration without modifications:
+
+```gradle
+signingConfigs {
+    release {
+        // These hardcoded values will be automatically overridden
+        storeFile file('path/to/keystore.jks')
+        keyAlias 'placeholder'
+        storePassword 'placeholder'
+        keyPassword 'placeholder'
+    }
+}
+```
+
+### Custom ROCK Properties
+
+For apps that explicitly read custom properties in their `build.gradle`, the action also sets `ROCK_UPLOAD_*` properties:
+
+```gradle
+signingConfigs {
+    release {
+        storeFile file('path/to/keystore.jks')
+        keyAlias project.findProperty('ROCK_UPLOAD_KEY_ALIAS') ?: 'placeholder'
+        storePassword project.findProperty('ROCK_UPLOAD_STORE_PASSWORD') ?: 'placeholder'
+        keyPassword project.findProperty('ROCK_UPLOAD_KEY_PASSWORD') ?: 'placeholder'
+    }
+}
+```
+
+The following mappings are set:
+
+- `ROCK_UPLOAD_KEY_ALIAS` ← `inputs.keystore-key-alias`
+- `ROCK_UPLOAD_STORE_FILE` ← `inputs.keystore-store-file`
+- `ROCK_UPLOAD_STORE_PASSWORD` ← `inputs.keystore-store-password`
+- `ROCK_UPLOAD_KEY_PASSWORD` ← `inputs.keystore-key-password`
+
+Both conventions are set simultaneously, so the action works with any existing build configuration.
+
 ## Prerequisites
 
 - Ubuntu runner
