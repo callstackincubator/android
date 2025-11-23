@@ -120,6 +120,12 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
+    - name: Set Build Type Env
+      id: build-type
+      run: echo "BUILD_TYPE=${{ inputs.aab == 'true' && 'aab' || 'apk' }}" >> $GITHUB_ENV
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
     - name: Get Provider Name
       run: |
         PROVIDER_NAME=$(npx rock remote-cache get-provider-name) || (echo "$PROVIDER_NAME" && exit 1)
@@ -137,7 +143,7 @@ runs:
     - name: Check if PR-related artifact exists
       if: ${{ github.event_name == 'pull_request' && inputs.re-sign == 'true' }}
       run: |
-        ARTIFACT_TRAITS="${{ inputs.variant }},${{ github.event.pull_request.number}}"
+        ARTIFACT_TRAITS="${{ inputs.variant }},${{ env.BUILD_TYPE }},${{ github.event.pull_request.number}}"
         echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
 
         OUTPUT=$(npx rock remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json) || (echo "$OUTPUT" && exit 1)
@@ -151,7 +157,7 @@ runs:
     - name: Check if regular artifact exists
       if: ${{ !env.ARTIFACT_NAME }}
       run: |
-        ARTIFACT_TRAITS="${{ inputs.variant }}"
+        ARTIFACT_TRAITS="${{ inputs.variant }},${{ env.BUILD_TYPE }}"
         echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
 
         OUTPUT=$(npx rock remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json) || (echo "$OUTPUT" && exit 1)
@@ -244,7 +250,7 @@ runs:
       run: |
         npx rock build:android \
           --variant "${{ inputs.variant }}" \
-          ${{ inputs.aab == 'true' && '--aab' || '' }} \
+          ${{ env.BUILD_TYPE == 'aab' && '--aab' || '' }} \
           ${{ inputs.rock-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -281,7 +287,7 @@ runs:
         else
           IDENTIFIER=$(echo "$GITHUB_SHA" | cut -c1-7)
         fi
-        ARTIFACT_TRAITS="${{ inputs.variant }},${IDENTIFIER}"
+        ARTIFACT_TRAITS="${{ inputs.variant }},${{ env.BUILD_TYPE }},${IDENTIFIER}"
         ARTIFACT_TRAITS_HYPHENATED=$(echo "$ARTIFACT_TRAITS" | tr ',' '-')
         ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT="${ARTIFACT_TRAITS_HYPHENATED}-${FINGERPRINT}"
         echo "ARTIFACT_NAME=rock-android-${ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT}" >> $GITHUB_ENV
