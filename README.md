@@ -39,11 +39,12 @@ jobs:
           # keystore-file: 'path/to/your-keystore.jks'
           # Option 2: Use base64 encoded keystore (alternative to keystore-file)
           # keystore-base64: ${{ secrets.KEYSTORE_BASE64 }}
-          # keystore-store-file: 'your-keystore.jks'
           # keystore-store-password: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           # keystore-key-alias: 'your-key-alias'
           # keystore-key-password: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
           # keystore-path: 'tools/buildtools/upload-key.keystore' # Optional: for custom keystore locations
+          # For store AAB add this:
+          # aab: true
 ```
 
 ## Inputs
@@ -55,11 +56,11 @@ jobs:
 | `validate-gradle-wrapper` | Whether to validate the Gradle wrapper   | No       | `true`             |
 | `setup-java`              | Whether to run actions/setup-java action | No       | `true`             |
 | `variant`                 | Build variant (debug/release)            | No       | `debug`            |
+| `aab`                     | Build Android App Bundle instead of APK  | No       | `false`            |
 | `sign`                    | Whether to sign the build with keystore  | No       | -                  |
 | `re-sign`                 | Re-sign the APK with new JS bundle       | No       | `false`            |
 | `keystore-file`           | Path to the keystore file                | No       | -                  |
 | `keystore-base64`         | Base64 encoded keystore file             | No       | -                  |
-| `keystore-store-file`     | Keystore store file name                 | No       | -                  |
 | `keystore-store-password` | Keystore store password                  | No       | -                  |
 | `keystore-key-alias`      | Keystore key alias                       | No       | -                  |
 | `keystore-key-password`   | Keystore key password                    | No       | -                  |
@@ -88,10 +89,10 @@ The action automatically sets `android.injected.signing.*` properties which are 
 signingConfigs {
     release {
         // These hardcoded values will be automatically overridden
-        storeFile file('path/to/keystore.jks')
-        keyAlias 'placeholder'
-        storePassword 'placeholder'
-        keyPassword 'placeholder'
+        storeFile file('debug.keystore')
+        storePassword 'android'
+        keyAlias 'androiddebugkey'
+        keyPassword 'android'
     }
 }
 ```
@@ -103,10 +104,12 @@ For apps that explicitly read custom properties in their `build.gradle`, the act
 ```gradle
 signingConfigs {
     release {
-        storeFile file('path/to/keystore.jks')
-        keyAlias project.findProperty('ROCK_UPLOAD_KEY_ALIAS') ?: 'placeholder'
-        storePassword project.findProperty('ROCK_UPLOAD_STORE_PASSWORD') ?: 'placeholder'
-        keyPassword project.findProperty('ROCK_UPLOAD_KEY_PASSWORD') ?: 'placeholder'
+        if (project.hasProperty('ROCK_UPLOAD_STORE_FILE')) {
+            storeFile file(ROCK_UPLOAD_STORE_FILE)
+            storePassword ROCK_UPLOAD_STORE_PASSWORD
+            keyAlias ROCK_UPLOAD_KEY_ALIAS
+            keyPassword ROCK_UPLOAD_KEY_PASSWORD
+        }
     }
 }
 ```
@@ -114,7 +117,7 @@ signingConfigs {
 The following mappings are set:
 
 - `ROCK_UPLOAD_KEY_ALIAS` ← `inputs.keystore-key-alias`
-- `ROCK_UPLOAD_STORE_FILE` ← `inputs.keystore-store-file`
+- `ROCK_UPLOAD_STORE_FILE` ← `$ANDROID_SOURCE_DIR/$APP_NAME/inputs.keystore-path` (full path)
 - `ROCK_UPLOAD_STORE_PASSWORD` ← `inputs.keystore-store-password`
 - `ROCK_UPLOAD_KEY_PASSWORD` ← `inputs.keystore-key-password`
 
