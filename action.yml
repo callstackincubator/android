@@ -44,6 +44,9 @@ inputs:
   keystore-file:
     description: 'Path to the keystore file'
     required: false
+  keystore-store-file:
+    description: 'Keystore store file name'
+    required: false
   keystore-store-password:
     description: 'Keystore store password'
     required: false
@@ -84,6 +87,11 @@ runs:
           # Validate keystore file actually exists if provided
           if [ -n "${{ inputs.keystore-file }}" ] && [ ! -f "${{ inputs.keystore-file }}" ]; then
             echo "Keystore file '${{ inputs.keystore-file }}' does not exist."
+            exit 1
+          fi
+
+          if [ -z "${{ inputs.keystore-store-file }}" ]; then
+            echo "  Input 'keystore-store-file' is required for signed builds."
             exit 1
           fi
 
@@ -180,6 +188,25 @@ runs:
       if: ${{ inputs.validate-gradle-wrapper == 'true' && !env.ARTIFACT_URL }}
       uses: gradle/actions/wrapper-validation@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
 
+    - name: Create local gradle.properties
+      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
+      run: |
+        mkdir -p $HOME/.gradle
+        touch $HOME/.gradle/gradle.properties
+
+        # Android standard properties (auto-recognized by AGP)
+        echo "android.injected.signing.store.file=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.store.password=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.alias=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+
+        # Rock custom properties (for apps that explicitly read them in signingConfigs)
+        echo "ROCK_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+      shell: bash
+
     - name: Determine Android sourceDir and appName
       if: ${{ !env.ARTIFACT_URL }}
       run: |
@@ -215,28 +242,8 @@ runs:
           echo "${{ inputs.keystore-base64 }}" | base64 --decode > "$KEYSTORE_TARGET_PATH"
           echo "Successfully copied keystore base64 to target path: $KEYSTORE_TARGET_PATH"
         fi
-        echo "KEYSTORE_FILE_PATH=$KEYSTORE_TARGET_PATH" >> $GITHUB_ENV
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-    
-    - name: Create local gradle.properties
-      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
-      run: |
-        mkdir -p $HOME/.gradle
-        touch $HOME/.gradle/gradle.properties
-
-        # Android standard properties (auto-recognized by AGP)
-        echo "android.injected.signing.store.file=${{ env.KEYSTORE_FILE_PATH }}" >> $HOME/.gradle/gradle.properties
-        echo "android.injected.signing.store.password=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
-        echo "android.injected.signing.key.alias=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
-        echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
-
-        # Rock custom properties (for apps that explicitly read them in signingConfigs)
-        echo "ROCK_UPLOAD_STORE_FILE=${{ env.KEYSTORE_FILE_PATH }}" >> $HOME/.gradle/gradle.properties
-        echo "ROCK_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
-        echo "ROCK_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
-        echo "ROCK_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
-      shell: bash
 
     - name: Build Android
       if: ${{ !env.ARTIFACT_URL }}
