@@ -309,14 +309,20 @@ runs:
     - name: Upload Artifact to Remote Cache for re-signed builds
       if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign == 'true' }}
       run: |
-        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path ${{ env.ARTIFACT_PATH }} --json --verbose) || (echo "$OUTPUT" && exit 1)
+        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path ${{ env.ARTIFACT_PATH }} --json 2>&1) || (echo "$OUTPUT" && exit 1)
+        echo "=== RAW ROCK UPLOAD OUTPUT (upload re-signed)==="
+        echo "$OUTPUT"
+        echo "=== END RAW OUTPUT ==="
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
       shell: bash
 
     - name: Upload Artifact to Remote Cache for regular builds
       if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign != 'true' && !env.ARTIFACT_URL }}
       run: |
-        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --json --verbose) || (echo "$OUTPUT" && exit 1)
+        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --json 2>&1) || (echo "$OUTPUT" && exit 1)
+        echo "=== RAW ROCK UPLOAD OUTPUT (upload regular)==="
+        echo "$OUTPUT"
+        echo "=== END RAW OUTPUT ==="
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
       shell: bash
 
@@ -345,3 +351,4 @@ runs:
         title: Android ${{ inputs.variant }} APK for all devices
         artifact-url: ${{ steps.upload-artifact.outputs.artifact-url || env.ARTIFACT_URL }}
         github-token: ${{ inputs.github-token }}
+
