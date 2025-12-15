@@ -34,6 +34,10 @@ inputs:
   re-sign:
     description: Re-sign the app bundle with new JS bundle
     required: false
+  ad-hoc:
+    description: 'Upload the APK with index.html page'
+    required: false
+    default: false
   keystore-base64:
     description: 'Base64 version of the release keystore'
     required: false
@@ -317,6 +321,13 @@ runs:
       if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign != 'true' && !env.ARTIFACT_URL }}
       run: |
         OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --json --verbose) || (echo "$OUTPUT" && exit 1)
+        echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Upload for Ad-hoc distribution
+      if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.ad-hoc == 'true' }}
+      run: |
+        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path "${{ env.ARTIFACT_PATH }}" --json --ad-hoc) || (echo "$OUTPUT" && exit 1)
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
       shell: bash
 
