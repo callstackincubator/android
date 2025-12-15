@@ -34,6 +34,10 @@ inputs:
   re-sign:
     description: Re-sign the app bundle with new JS bundle
     required: false
+  ad-hoc:
+    description: 'Upload the APK with index.html page'
+    required: false
+    default: false
   keystore-base64:
     description: 'Base64 version of the release keystore'
     required: false
@@ -269,7 +273,7 @@ runs:
           --keystore-password "${{ inputs.keystore-store-password }}" \
           --key-alias "${{ inputs.keystore-key-alias }}" \
           --key-password "${{ inputs.keystore-key-password }}"
-
+          
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
@@ -314,7 +318,7 @@ runs:
     - name: Upload Artifact to Remote Cache for re-signed builds
       if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign == 'true' }}
       run: |
-        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path ${{ env.ARTIFACT_PATH }} --json --verbose) || (echo "$OUTPUT" && exit 1)
+        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path "${{ env.ARTIFACT_PATH }}" --json --verbose) || (echo "$OUTPUT" && exit 1)
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
       shell: bash
 
@@ -322,6 +326,15 @@ runs:
       if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.re-sign != 'true' && !env.ARTIFACT_URL }}
       run: |
         OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --json --verbose) || (echo "$OUTPUT" && exit 1)
+        echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
+      shell: bash
+
+    # For ad-hoc builds, the ARTIFACT_NAME may contain PR-number, while Rock will save the artifact without PR trait in its cache.
+    # We need to upload the artifact with the PR-number in the name, that's why we use --binary-path with appropriate ARTIFACT_PATH that accounts for it.
+    - name: Upload for Ad-hoc distribution
+      if: ${{ env.PROVIDER_NAME != 'GitHub' && inputs.ad-hoc == 'true' }}
+      run: |
+        OUTPUT=$(npx rock remote-cache upload --name ${{ env.ARTIFACT_NAME }} --binary-path "${{ env.ARTIFACT_PATH }}" --json --ad-hoc) || (echo "$OUTPUT" && exit 1)
         echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
       shell: bash
 
