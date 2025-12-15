@@ -202,7 +202,7 @@ runs:
       shell: bash
 
     - name: Determine Android sourceDir and appName
-      if: ${{ !env.ARTIFACT_URL }}
+      if: ${{ !env.ARTIFACT_URL || (env.ARTIFACT_URL && inputs.re-sign) }}
       run: |
         JSON_OUTPUT=$(npx rock config -p android) || (echo "$JSON_OUTPUT" && exit 1)
         echo "$JSON_OUTPUT" | jq -r '.project'
@@ -214,7 +214,7 @@ runs:
       working-directory: ${{ inputs.working-directory }}
 
     - name: Decode and store keystore file
-      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
+      if: ${{ (!env.ARTIFACT_URL && inputs.sign) || (env.ARTIFACT_URL && inputs.re-sign) }}
       run: |
         if [ -n "$APP_NAME" ]; then
           KEYSTORE_TARGET_PATH="$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
@@ -236,6 +236,7 @@ runs:
           echo "${{ inputs.keystore-base64 }}" | base64 --decode > "$KEYSTORE_TARGET_PATH"
           echo "Successfully copied keystore base64 to target path: $KEYSTORE_TARGET_PATH"
         fi
+        echo "KEYSTORE_TARGET_PATH=$KEYSTORE_TARGET_PATH" >> $GITHUB_ENV
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
@@ -268,7 +269,11 @@ runs:
       if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
       run: |
         npx rock sign:android "${{ env.ARTIFACT_PATH }}" \
-          --build-jsbundle
+          --build-jsbundle \
+          --keystore "$KEYSTORE_TARGET_PATH" \
+          --keystore-password "${{ inputs.keystore-store-password }}" \
+          --key-alias "${{ inputs.keystore-key-alias }}" \
+          --key-password "${{ inputs.keystore-key-password }}"
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
@@ -339,15 +344,21 @@ runs:
         npx rock remote-cache delete --name ${{ env.ARTIFACT_NAME }} --all-but-latest --json
       shell: bash
 
-    - name: Clean Up Keystore and gradle properties (signed builds only)
-      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
+    - name: Clean Up Keystore
+      if: ${{ (!env.ARTIFACT_URL && inputs.sign) || (env.ARTIFACT_URL && inputs.re-sign) }}
       run: |
-        rm $HOME/.gradle/gradle.properties
         if [ -n "$APP_NAME" ]; then
           rm "$ANDROID_SOURCE_DIR/$APP_NAME/${{ inputs.keystore-path }}"
         else
           rm "$ANDROID_SOURCE_DIR/${{ inputs.keystore-path }}"
         fi
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Clean Up gradle properties (signed builds only)
+      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
+      run: |
+        rm $HOME/.gradle/gradle.properties
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
