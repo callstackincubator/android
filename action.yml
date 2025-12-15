@@ -263,8 +263,13 @@ runs:
     - name: Re-sign APK
       if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
       run: |
-        npx rock sign:android ${{ env.ARTIFACT_PATH }} \
-          --build-jsbundle
+        npx rock sign:android "${{ env.ARTIFACT_PATH }}" \
+          --build-jsbundle \
+          --keystore "${{ inputs.keystore-file }}" \
+          --keystore-password "${{ inputs.keystore-store-password }}" \
+          --key-alias "${{ inputs.keystore-key-alias }}" \
+          --key-password "${{ inputs.keystore-key-password }}"
+
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
