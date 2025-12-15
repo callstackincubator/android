@@ -44,6 +44,8 @@ jobs:
           # keystore-key-alias: 'your-key-alias'
           # keystore-key-password: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
           # keystore-path: 'tools/buildtools/upload-key.keystore' # Optional: for custom keystore locations
+          # For store AAB add this:
+          # aab: true
 ```
 
 ## Inputs
@@ -55,6 +57,7 @@ jobs:
 | `validate-gradle-wrapper` | Whether to validate the Gradle wrapper   | No       | `true`             |
 | `setup-java`              | Whether to run actions/setup-java action | No       | `true`             |
 | `variant`                 | Build variant (debug/release)            | No       | `debug`            |
+| `aab`                     | Build Android App Bundle instead of APK  | No       | `false`            |
 | `sign`                    | Whether to sign the build with keystore  | No       | -                  |
 | `re-sign`                 | Re-sign the APK with new JS bundle       | No       | `false`            |
 | `keystore-file`           | Path to the keystore file                | No       | -                  |
