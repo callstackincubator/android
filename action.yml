@@ -256,7 +256,7 @@ runs:
       run: |
         npx rock build:android \
           --variant "${{ inputs.variant }}" \
-          ${{ env.BUILD_TYPE == 'aab' && '--aab' || '' }} \
+          ${{ env.BUILD_EXT == 'aab' && '--aab' || '' }} \
           ${{ inputs.rock-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -297,7 +297,7 @@ runs:
         else
           IDENTIFIER=$(echo "$GITHUB_SHA" | cut -c1-7)
         fi
-        ARTIFACT_TRAITS="${{ inputs.variant }},${{ env.BUILD_TYPE }},${IDENTIFIER}"
+        ARTIFACT_TRAITS="${{ inputs.variant }},${IDENTIFIER}"
         ARTIFACT_TRAITS_HYPHENATED=$(echo "$ARTIFACT_TRAITS" | tr ',' '-')
         ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT="${ARTIFACT_TRAITS_HYPHENATED}-${FINGERPRINT}"
         echo "ARTIFACT_NAME=rock-android-${ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT}" >> $GITHUB_ENV
