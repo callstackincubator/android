@@ -125,11 +125,9 @@ runs:
       working-directory: ${{ inputs.working-directory }}
 
     - name: Set Binary Ext
-      id: build-type
       run: |
         echo "BINARY_EXT=${{ inputs.aab == 'true' && 'aab' || 'apk' }}" >> $GITHUB_ENV
       shell: bash
-      working-directory: ${{ inputs.working-directory }}
 
     - name: Get Provider Name
       run: |
