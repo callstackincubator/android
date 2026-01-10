@@ -256,7 +256,7 @@ runs:
       run: |
         npx rock build:android \
           --variant "${{ inputs.variant }}" \
-          ${{ env.BUILD_EXT == 'aab' && '--aab' || '' }} \
+          ${{ env.BINARY_EXT == 'aab' && '--aab' || '' }} \
           ${{ inputs.rock-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
