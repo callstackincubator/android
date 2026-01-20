@@ -182,25 +182,6 @@ runs:
       if: ${{ inputs.validate-gradle-wrapper == 'true' && !env.ARTIFACT_URL }}
       uses: gradle/actions/wrapper-validation@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
 
-    - name: Create local gradle.properties
-      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
-      run: |
-        mkdir -p $HOME/.gradle
-        touch $HOME/.gradle/gradle.properties
-
-        # Android standard properties (auto-recognized by AGP)
-        echo "android.injected.signing.store.file=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
-        echo "android.injected.signing.store.password=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
-        echo "android.injected.signing.key.alias=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
-        echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
-
-        # Rock custom properties (for apps that explicitly read them in signingConfigs)
-        echo "ROCK_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
-        echo "ROCK_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
-        echo "ROCK_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
-        echo "ROCK_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
-      shell: bash
-
     - name: Determine Android sourceDir and appName
       if: ${{ !env.ARTIFACT_URL || (env.ARTIFACT_URL && inputs.re-sign) }}
       run: |
@@ -239,6 +220,25 @@ runs:
         echo "KEYSTORE_TARGET_PATH=$KEYSTORE_TARGET_PATH" >> $GITHUB_ENV
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+
+    - name: Create local gradle.properties
+      if: ${{ !env.ARTIFACT_URL && inputs.sign }}
+      run: |
+        mkdir -p $HOME/.gradle
+        touch $HOME/.gradle/gradle.properties
+
+        # Android standard properties (auto-recognized by AGP).
+        echo "android.injected.signing.store.file=$KEYSTORE_TARGET_PATH" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.store.password=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.alias=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "android.injected.signing.key.password=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+
+        # Rock custom properties (for apps that explicitly read them in signingConfigs)
+        echo "ROCK_UPLOAD_STORE_FILE=${{ inputs.keystore-store-file }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_STORE_PASSWORD=${{ inputs.keystore-store-password }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_ALIAS=${{ inputs.keystore-key-alias }}" >> $HOME/.gradle/gradle.properties
+        echo "ROCK_UPLOAD_KEY_PASSWORD=${{ inputs.keystore-key-password }}" >> $HOME/.gradle/gradle.properties
+      shell: bash
 
     - name: Build Android
       if: ${{ !env.ARTIFACT_URL }}
