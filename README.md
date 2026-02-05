@@ -66,6 +66,7 @@ jobs:
 | `keystore-path`           | where the keystore should be placed      | No       | `release.keystore` |
 | `rock-build-extra-params` | Extra parameters for rock build:android  | No       | -                  |
 | `comment-bot`             | Whether to comment PR with build link    | No       | `true`             |
+| `custom-ref`              | Custom app reference for artifact naming | No       | -                  |
 
 ## Outputs
 
