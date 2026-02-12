@@ -25,6 +25,10 @@ inputs:
     description: 'Build variant'
     required: false
     default: 'debug'
+  aab:
+    description: 'Build Android App Bundle instead of APK'
+    required: false
+    default: false
   rock-build-extra-params:
     description: 'Extra parameters to pass to "rock build:android"'
     required: false
@@ -122,6 +126,11 @@ runs:
         echo "FINGERPRINT=$FINGERPRINT_OUTPUT" >> $GITHUB_ENV
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+
+    - name: Set Binary Ext
+      run: |
+        echo "BINARY_EXT=${{ inputs.aab == 'true' && 'aab' || 'apk' }}" >> $GITHUB_ENV
+      shell: bash
 
     - name: Get Provider Name
       run: |
@@ -248,6 +257,7 @@ runs:
       run: |
         npx rock build:android \
           --variant "${{ inputs.variant }}" \
+          ${{ env.BINARY_EXT == 'aab' && '--aab' || '' }} \
           ${{ inputs.rock-build-extra-params }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -255,20 +265,20 @@ runs:
     - name: Find Build Artifact
       if: ${{ !env.ARTIFACT_URL }}
       run: |
-        APK_PATH=$(find $ANDROID_SOURCE_DIR/$APP_NAME/build/outputs -name '*.apk' | head -1 )
-        echo APK_PATH $APK_PATH
-        echo "ARTIFACT_PATH=$APK_PATH" >> $GITHUB_ENV
+        BINARY_PATH=$(find $ANDROID_SOURCE_DIR/$APP_NAME/build/outputs -name '*.${{ env.BINARY_EXT }}' | head -1 )
+        echo BINARY_PATH $BINARY_PATH
+        echo "ARTIFACT_PATH=$BINARY_PATH" >> $GITHUB_ENV
       shell: bash
 
-    - name: Download and Unpack APK
+    - name: Download and Unpack Binary
       if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
       run: |
         DOWNLOAD_OUTPUT=$(npx rock remote-cache download --name ${{ env.ARTIFACT_NAME }} --json) || (echo "$DOWNLOAD_OUTPUT" && exit 1)
-        APK_PATH=$(echo "$DOWNLOAD_OUTPUT" | jq -r '.path')
-        echo "ARTIFACT_PATH=$APK_PATH" >> $GITHUB_ENV
+        BINARY_PATH=$(echo "$DOWNLOAD_OUTPUT" | jq -r '.path')
+        echo "ARTIFACT_PATH=$BINARY_PATH" >> $GITHUB_ENV
       shell: bash
 
-    - name: Re-sign APK
+    - name: Re-sign Binary
       if: ${{ env.ARTIFACT_URL && inputs.re-sign == 'true' }}
       run: |
         npx rock sign:android "${{ env.ARTIFACT_PATH }}" \
@@ -371,6 +381,6 @@ runs:
       if: ${{ github.event_name == 'pull_request' && inputs.comment-bot == 'true' }}
       uses: callstackincubator/android/.github/actions/rock-post-build@v3
       with:
-        title: Android ${{ inputs.variant }} APK for all devices
+        title: Android ${{ inputs.variant }} Binary for all devices
         artifact-url: ${{ steps.upload-artifact.outputs.artifact-url || env.ARTIFACT_URL }}
         github-token: ${{ inputs.github-token }}
