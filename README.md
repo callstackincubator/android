@@ -70,6 +70,7 @@ jobs:
 | `rock-build-extra-params` | Extra parameters for rock build:android  | No       | -                  |
 | `comment-bot`             | Whether to comment PR with build link    | No       | `true`             |
 | `custom-identifier`       | Custom identifier used in artifact naming for re-sign and ad-hoc flows to distinguish builds with the same native fingerprint     | No       | -           |
+| `validate-elf-alignment`  | Validate 16KB ELF alignment of native libraries (Google Play compliance) | No       | `false`     |
 
 ## Artifact Naming
 
@@ -149,6 +150,27 @@ The following mappings are set:
 - `ROCK_UPLOAD_KEY_PASSWORD` ← `inputs.keystore-key-password`
 
 Both conventions are set simultaneously, so the action works with any existing build configuration.
+
+## ELF Alignment Validation
+
+When `validate-elf-alignment: true`, the action verifies that all native shared libraries (`.so` files) in the APK are 16KB page-size aligned, as required by [Google Play for Android 15+ devices](https://developer.android.com/guide/practices/page-sizes).
+
+The check runs **only on fresh builds** (not on cached/downloaded artifacts) and **before** re-signing or uploading. It performs two levels of verification:
+
+1. **Zip-level alignment** via `zipalign -P 16` — checks that `.so` entries are correctly aligned within the APK archive
+2. **ELF-level alignment** via `objdump` — inspects each shared library's LOAD segment to confirm `2**14` (16KB) or higher alignment
+
+The command only supports APK files. If the build produces an AAB, the step will fail with a clear error. If any 64-bit library (`arm64-v8a`, `x86_64`) is misaligned, the workflow fails with a list of affected libraries.
+
+Internally this uses `npx rock validate-elf-alignment`, which requires `objdump` available on the runner. `zipalign` from Android build-tools 35.0.0+ is optional but recommended for zip-level checks.
+
+```yaml
+- uses: callstackincubator/android@v3
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    variant: 'release'
+    validate-elf-alignment: true
+```
 
 ## Prerequisites
 
