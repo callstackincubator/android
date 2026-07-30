@@ -175,7 +175,7 @@ Internally this uses `npx rock validate-elf-alignment`, which requires `objdump`
 ## Prerequisites
 
 - Ubuntu runner
-- Rock CLI installed in your project
+- Rock CLI 0.15.1 or newer installed in your project
 - For release builds:
   - Valid Android keystore file
   - Proper code signing setup

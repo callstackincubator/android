@@ -123,14 +123,6 @@ runs:
         fi
       shell: bash
 
-    - name: Native Fingerprint
-      id: fingerprint
-      run: |
-        FINGERPRINT_OUTPUT=$(npx rock fingerprint -p android --raw) || (echo "$FINGERPRINT_OUTPUT" && exit 1)
-        echo "FINGERPRINT=$FINGERPRINT_OUTPUT" >> $GITHUB_ENV
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-
     - name: Set Binary Ext
       run: |
         echo "BINARY_EXT=${{ inputs.aab == 'true' && 'aab' || 'apk' }}" >> $GITHUB_ENV
@@ -157,11 +149,12 @@ runs:
         ARTIFACT_TRAITS="${{ inputs.variant }},${{ github.event.pull_request.number}}"
         echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
 
-        OUTPUT=$(npx rock remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json) || (echo "$OUTPUT" && exit 1)
-        if [ "$OUTPUT" ]; then
-          echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
-          echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=$(echo "$OUTPUT" | jq -r '.name')" >> $GITHUB_ENV
+        STATUS_OUTPUT=$(npx rock remote-cache status -p android --traits "$ARTIFACT_TRAITS" --json) || (echo "$STATUS_OUTPUT" && exit 1)
+        echo "FINGERPRINT=$(echo "$STATUS_OUTPUT" | jq -er '.fingerprint')" >> $GITHUB_ENV
+        if [ "$(echo "$STATUS_OUTPUT" | jq -r '.hit')" = "true" ]; then
+          echo "ARTIFACT_URL=$(echo "$STATUS_OUTPUT" | jq -r '.artifact.url')" >> $GITHUB_ENV
+          echo "ARTIFACT_ID=$(echo "$STATUS_OUTPUT" | jq -r '.artifact.id // empty')" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$(echo "$STATUS_OUTPUT" | jq -r '.artifactName')" >> $GITHUB_ENV
         fi
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -172,22 +165,15 @@ runs:
         ARTIFACT_TRAITS="${{ inputs.variant }}"
         echo "ARTIFACT_TRAITS=$ARTIFACT_TRAITS" >> $GITHUB_ENV
 
-        OUTPUT=$(npx rock remote-cache list -p android --traits "${ARTIFACT_TRAITS}" --json) || (echo "$OUTPUT" && exit 1)
-        if [ "$OUTPUT" ]; then
-          echo "ARTIFACT_URL=$(echo "$OUTPUT" | jq -r '.url')" >> $GITHUB_ENV
-          echo "ARTIFACT_ID=$(echo "$OUTPUT" | jq -r '.id')" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=$(echo "$OUTPUT" | jq -r '.name')" >> $GITHUB_ENV
+        STATUS_OUTPUT=$(npx rock remote-cache status -p android --traits "$ARTIFACT_TRAITS" --json) || (echo "$STATUS_OUTPUT" && exit 1)
+        echo "FINGERPRINT=$(echo "$STATUS_OUTPUT" | jq -er '.fingerprint')" >> $GITHUB_ENV
+        echo "ARTIFACT_NAME=$(echo "$STATUS_OUTPUT" | jq -er '.artifactName')" >> $GITHUB_ENV
+        if [ "$(echo "$STATUS_OUTPUT" | jq -r '.hit')" = "true" ]; then
+          echo "ARTIFACT_URL=$(echo "$STATUS_OUTPUT" | jq -r '.artifact.url')" >> $GITHUB_ENV
+          echo "ARTIFACT_ID=$(echo "$STATUS_OUTPUT" | jq -r '.artifact.id // empty')" >> $GITHUB_ENV
         fi
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-    - name: Set Artifact Name (if not set)
-      if: ${{ !env.ARTIFACT_NAME }}
-      run: |
-        # Transform commas to hyphens
-        ARTIFACT_TRAITS_HYPHENATED=$(echo "$ARTIFACT_TRAITS" | tr ',' '-')
-        ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT="${ARTIFACT_TRAITS_HYPHENATED}-${FINGERPRINT}"
-        echo "ARTIFACT_NAME=rock-android-${ARTIFACT_TRAITS_HYPHENATED_FINGERPRINT}" >> $GITHUB_ENV
-      shell: bash
 
     - name: Install Java
       if: ${{ inputs.setup-java == 'true' && !env.ARTIFACT_URL }}
